@@ -1,0 +1,207 @@
+---
+title: "Midterm 2 - Dairy - STA 309"
+author: "Will Paz"
+date: "2024-04-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggthemes)
+library(patchwork)
+```
+
+### Read in the Data
+
+```{r}
+production <- read_csv("https://raw.githubusercontent.com/oconnellmj/sta309/main/milk-production-tonnes.csv")
+consumption <- read_csv("https://raw.githubusercontent.com/oconnellmj/sta309/main/per-capita-milk-consumption.csv")
+```
+
+## Our Goal
+
+In this problem, you will create a dashboard about dairy production and consumption around the world. The datasets for this problem come from the Food and Agriculture Organization of the United Nations and have been preprocessed by OurWorldInData.org. 
+
+Create a dashboard to study dairy production and consumption around the world. Among the plots, you must include the following:
+
+  * A map of dairy production
+  * A map of dairy consumption
+  * Changes in dairy production/consumption over time
+  * The relationship between dairy production and consumption
+  * At least 4 plots in the dashboard (the previous requirements will probably require 4 plots anyway!)
+
+You should focus on telling a story about dairy production and consumption; annotations and subtitles can help focus the narrative! Apart from the above requirements, the assignment is very open-ended. Here are some things that you can consider:
+
+  * For the maps, are you interested in specific years (such as a recent year or recent years) or the         average across all years in the data (1961-2022)?
+  * Do you want to look at the whole world, or focus on a specific region?
+    Should you show maps at different time points? (This will likely lead to more than 4 plots, but it        might help you present your narrative).
+    
+## Production Map
+    
+```{r}
+eu_countries <- c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", "Czech Republic", 
+                  "Denmark", "Estonia", "Finland", "France", "Germany", "Greece", 
+                  "Hungary", "Ireland", "Italy", "Latvia", "Lithuania", "Luxembourg", 
+                  "Malta", "Netherlands", "Poland", "Portugal", "Romania", "Slovakia", 
+                  "Slovenia", "Spain", "Sweden")
+
+production_eu <- production %>% 
+  filter(Entity %in% eu_countries,
+         Year >= 2009,
+         Year <= 2019)
+
+world_map <- map_data("world")
+
+world_map_prod_clean <- world_map %>%
+  rename(Entity = region) %>%
+  filter(Entity %in% unique(production_eu$Entity)) %>% 
+  select(!subregion)
+
+production_map <- left_join(world_map_prod_clean,production_eu,by="Entity")
+
+map1 <- ggplot(production_map, aes(x=long, y=lat, group=group) ) +
+  geom_polygon(aes(fill=`Milk Production (tonnes)`),color="black",linewidth=.12) +
+  scale_fill_gradient2(low="gray30",high="blanchedalmond",
+                      midpoint=12000000) +
+  coord_map() +
+  theme_map() +
+  theme(legend.position = c(-.02,.65),
+        legend.background = element_rect(fill = "transparent")) +
+  labs(title="Dairy Production in the European Union",
+       subtitle = "Production spans from 2009 to 2019")
+map1
+```
+
+## Consumption Map
+
+```{r}
+consumption_eu <- consumption %>% 
+  filter(Entity %in% eu_countries,
+         Year >= 2009,
+         Year <= 2019)
+
+world_map <- map_data("world")
+
+world_map_consump_clean <- world_map %>%
+  rename(Entity = region) %>%
+  filter(Entity %in% unique(consumption_eu$Entity)) %>% 
+  select(!subregion)
+
+consumption_map <- left_join(world_map_consump_clean,consumption_eu,by="Entity")
+
+map2 <- ggplot(consumption_map, aes(x=long, y=lat, group=group) ) +
+  geom_polygon(aes(fill=`Milk consumption (kilograms per year per capita)`),color="black",linewidth=.12) +
+  scale_fill_gradient2(low="gray35",high="blanchedalmond",
+                       midpoint = 230) +
+  coord_map() +
+  theme_map() +
+  theme(legend.position = c(-.02,.65),
+        legend.background = element_rect(fill = "transparent")) +
+  labs(title="Dairy Consumption in the European Union",
+       subtitle = "Consumption spans from 2009 to 2019")
+map2
+```
+
+```{r}
+production_eu %>% 
+  arrange(desc(`Milk Production (tonnes)`))
+
+consumption_eu %>% 
+  arrange(desc(`Milk consumption (kilograms per year per capita)`))
+```
+
+
+## Dairy Production Over Time
+
+```{r}
+chart1 <- ggplot() +
+  geom_line(data=production_eu,aes(x=as.factor(Year),y=`Milk Production (tonnes)`,
+                              group=Entity),color="gray80") +
+  geom_line(data=filter(production_eu,Entity == "Germany"),
+            aes(x=as.factor(Year),y=`Milk Production (tonnes)`, group=Entity),
+            color="chocolate", linewidth=1.5) +
+  geom_line(data=filter(production_eu,Entity == "France"),
+            aes(x=as.factor(Year),y=`Milk Production (tonnes)`, group=Entity),
+            color="mediumblue", linewidth=1.5) +
+  theme_minimal() +
+  labs(x=element_blank(),
+       title="Change in Dairy Production in the European Union from 2009 to 2019",
+       subtitle = element_blank()) +
+  annotate("label", x = 7, y = 29500000, label = "Germany", color = "chocolate") +
+  annotate("label", x = 4.5, y = 22000000, label = "France", color = "mediumblue") +
+  theme(panel.grid.minor.y = element_blank(),
+        panel.grid.minor.x = element_blank())
+chart1
+```
+
+## Dairy Consumption Over Time
+
+```{r}
+chart2 <- ggplot() +
+  geom_line(data=consumption_eu,aes(x=as.factor(Year),
+                                    y=`Milk consumption (kilograms per year per capita)`,
+                                    group=Entity),color="gray80") +
+  geom_line(data=filter(consumption_eu,Entity == "Germany"),
+            aes(x=as.factor(Year),y=`Milk consumption (kilograms per year per capita)`, group=Entity),
+            color="chocolate", linewidth=1.5) +
+  geom_line(data=filter(consumption_eu,Entity == "France"),
+            aes(x=as.factor(Year),y=`Milk consumption (kilograms per year per capita)`, group=Entity),
+            color="mediumblue", linewidth=1.5) +
+  theme_minimal() +
+  labs(x=element_blank(),
+       title="Change in Dairy Consumption in the European Union from 2009 to 2019",
+       subtitle = element_blank()) +
+  annotate("label", x = 5, y = 120, label = "Germany", color = "chocolate") +
+  annotate("label", x = 7, y = 220, label = "France", color = "mediumblue") +
+  theme(panel.grid.minor.y = element_blank(),
+        panel.grid.minor.x = element_blank())
+chart2
+```
+
+## Relationship Between Production and Consumption
+
+```{r}
+mergedDF <- inner_join(production_eu,consumption_eu)
+
+mergedDF_clean <- mergedDF %>% 
+  group_by(Year) %>% 
+  mutate(kg_pp = (`Milk Production (tonnes)` * 1000) / 443103210, # Avg EU population over 2009-2019
+         Ratio = kg_pp / `Milk consumption (kilograms per year per capita)`)
+
+proportions <- ggplot(mergedDF_clean) +
+  geom_col(aes(y=Ratio,x=as.factor(Year)),fill="burlywood",color="burlywood") +
+  geom_hline(yintercept = 1, linewidth=.5,color="gray50") +
+  theme_minimal() +
+  labs(title="Proportionality of Dairy Production and Consumption per Capita",
+       subtitle="Dairy production and consumption span from 2009 to 2019",
+       x=element_blank(),
+       y=element_blank()) +
+  annotate("label", x = 6, y = 0.7, label = "Ratio < 1: Greater consumption than production\nRatio = 1: Production and consumption are equal\nRatio > 1: Greater production than consumption") +
+  theme(panel.grid.minor.y = element_blank())
+proportions
+```
+
+### Create the Dashboard
+
+```{r}
+map <- (map1 + proportions + map2) / (chart1 + chart2)
+
+map <- map +
+  plot_annotation(title = "Analyzing Dairy Production in Europe from 2009 to 2019",
+                  theme = theme(plot.title = element_text(size = 30, hjust=.5),
+                                plot.caption = element_text(size = 25),
+                                plot.subtitle = element_text(size = 25, hjust=.5)),
+                  caption = "Source: Food and Agriculture Organization of the United Nations",
+                  subtitle = "Created by: Will Paz") 
+```
+
+### Save the Image
+
+```{r}
+ggsave(filename="dairyProductionConsumption.png", plot=map,
+       device="png",
+       width=30, height=20, dpi=300)
+```
+
+
