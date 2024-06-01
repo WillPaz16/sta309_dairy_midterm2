@@ -1,5 +1,4 @@
 # Analyzing Dairy Production and Consumption in Europe from 2009 to 2019
-Analyzing Dairy Production and Consumption in Europe from 2009 to 2019
 
 Author: Will Paz
 
